@@ -1,9 +1,21 @@
-import unittest
+from unittest import TestCase, main
 
 from fre.fnregex import Repeat, Char, MatchResult, CharInterval
 
 
-class RepeatTest(unittest.TestCase):
+class CharTest(TestCase):
+
+    def test_char(self):
+        char = Char('a')
+        self.assertTrue(char.match(MatchResult.input('aa')).matched(),
+                        'on teste le cas ou est bon')
+        self.assertFalse(char.match(MatchResult.input('')).matched(),
+                         'on teste le cas dune chaine vide')
+        self.assertFalse(char.match(MatchResult.input('b')).matched(),
+                         'on teste le cas dune mauvaise correspondance')
+
+
+class RepeatTest(TestCase):
 
     def test_repeat_char_case(self):
         """Teste si une simple répétition de Char
@@ -41,4 +53,4 @@ class RepeatTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    main()
