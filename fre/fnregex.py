@@ -94,6 +94,11 @@ class MatchResult:
 
 @dataclass(frozen=True)
 class FullMatchResult:
+    """Un FullMatchResult représente un résultat de
+    matching sur l'ensemble d'un string, au contraire
+    de MatchResult qui représente un résultat de match
+    partiel.
+    """
 
     mr: MatchResult
 
@@ -105,20 +110,44 @@ class FullMatchResult:
         :return: True si à la fin et que cela matche,
                 False sinon
         """
+
         return self.mr.at_end() and self.mr.matched()
 
 
 class FnRegex:
-    def __init__(self):
-        pass
+    """Un FnRegex est une interface permettant
+    de définir ce qu'est une fonction regex. Elle
+    oblige les implémentations à mettre en place
+    la méthode
+    match(self, m: MatchResult) -> MatchResult
+    """
 
     def match(self, m: MatchResult) -> MatchResult:
+        """match permet de dire si l'entrée m est correct
+        vis à vis de la FnRegex qui est en cours d'analyse
+
+        :param m: Entrée à faire matcher avec la FnRegex
+        :return: Un nouveau MatchResult représentant le
+                résultat du matching courant
+        """
+
         pass
 
     def __or__(self, other):
+        """Construit un FnRegex de type Choice
+        :param other: l'autre choix
+        :return: un nouveau Choice
+        """
+
         return Choice(self, other)
 
     def __getitem__(self, sl: slice):
+        """Construit un FnRegex de type Repeat
+
+        :param sl: les limites min et max du Repeat
+        :return: un nouveau Repeat
+        """
+
         if isinstance(sl, slice):
             start = sl.start
             stop = sl.stop
@@ -131,10 +160,20 @@ class FnRegex:
                                  ' - rex[12:]')
 
     def __rshift__(self, other):
+        """Construit un FnRegex de type Sequence
+
+        :param other: suite de la séquence
+        :return: une nouvelle Sequence
+        """
+
         return Sequence(self, other)
 
 
 class Sequence(FnRegex):
+    """ Un Sequence est une suite de FnRegex
+    qui doivent toutes matcher pour être validé.
+    """
+
     def __init__(self,
                  left: FnRegex,
                  right: FnRegex):
@@ -143,6 +182,12 @@ class Sequence(FnRegex):
         self.right = right
 
     def match(self, m: MatchResult) -> MatchResult:
+        """Teste si le contenu de m match avec la sequence
+
+        :param m: contenu à tester
+        :return: un nouveau MatchResult
+        """
+
         lresult = self.left.match(m)
 
         if lresult.matched():
@@ -155,6 +200,13 @@ class Sequence(FnRegex):
 
 
 class Repeat(FnRegex):
+    """Un Repeat permet de mettre en place
+    une répétition sur une même FnRegex. Elle
+    peut être bornée par un min et un max.
+    La valeur min doit être atteinte et la valeur
+    max stop l'inspection
+    """
+
     def __init__(self,
                  re: FnRegex,
                  start: int,
@@ -176,6 +228,13 @@ class Repeat(FnRegex):
                       origin=self.origin or origin)
 
     def match(self, m: MatchResult) -> MatchResult:
+        """Teste si le contenu de m match entre min
+        et max fois la FnRegex répétée
+
+        :param m: contenu à tester
+        :return: un nouveau MatchResult
+        """
+
         reresult = self.re.match(m)
         before_stop = self.depth < self.stop
 
@@ -188,12 +247,22 @@ class Repeat(FnRegex):
 
 
 class Choice(FnRegex):
+    """Choice permet de modéliser le complémentaire
+    de la Sequence à savoir un choix parmi n FnRegex
+    """
+
     def __init__(self, left: FnRegex, right: FnRegex):
         super().__init__()
         self.left = left
         self.right = right
 
     def match(self, m: MatchResult) -> MatchResult:
+        """Teste si l'un des choix disponibles est correct
+
+        :param m: contenu à tester
+        :return: un nouveau MatchResult
+        """
+
         lm = self.left.match(m)
 
         if lm.matched():
@@ -203,12 +272,24 @@ class Choice(FnRegex):
 
 
 class CharInterval(FnRegex):
+    """Un CharInterval est un interval de deux
+    FnRegex de type Char et permet donc de tester
+    si un contenu est entre ces deux Chars
+    """
+
     def __init__(self, first: chr, last: chr):
         super().__init__()
         self.first = first
         self.last = last
 
     def match(self, m: MatchResult) -> MatchResult:
+        """Teste si le contenu de m est entre les deux
+        Char first et last
+
+        :param m: contenu à tester
+        :return: un nouveau MatchResult
+        """
+
         if self.first <= m.char() <= self.last:
             return m.ok()
         else:
@@ -216,14 +297,34 @@ class CharInterval(FnRegex):
 
 
 class Char(FnRegex):
+    """Un Char représente le FnRegex le plus simple,
+    le fait de tester un contenu par rapport à un
+    unique caractère
+    """
+
     def __init__(self, char: chr):
         super().__init__()
         self.char = char
 
     def __sub__(self, other: FnRegex) -> CharInterval:
+        """Opérateur permettant de construire un
+        CharInterval à partir de deux Char, le courant
+        et l'other
+
+        :param other: opérande de droite de l'opérateur
+        :return: un nouveau CharInterval
+        """
+
         return CharInterval(self.char, other.char)
 
     def match(self, m: MatchResult) -> MatchResult:
+        """Teste si le contenu de m correspond
+        strictement au caractère attendu
+
+        :param m: contenu à tester
+        :return: un nouveau MatchResult
+        """
+
         if m.not_end() and m.char() == self.char:
             return m.ok()
         else:
@@ -231,30 +332,34 @@ class Char(FnRegex):
 
 
 def match(fnrx: FnRegex, inp: str) -> MatchResult:
+    """Fonction générale permettant de tester inp
+    par rapport à le FnRegex fnrx passée en paramètre
+
+    Un matching partiel de l'input est autorisé. Pour
+    controler un matching total, il faut utiliser la
+    méthode fullmatch
+
+    :param fnrx: FnRegex portant le test
+    :param inp: input à tester en fonction du FnRegex
+    :return: un nouveau MatchResult témoignant du
+            résultat final
+    """
+
     return fnrx.match(MatchResult.input(inp))
 
 
 def fullmatch(fnrx: FnRegex, inp: str) -> FullMatchResult:
+    """Fonction générale permettant de tester inp
+    par rapport à le FnRegex fnrx passée en paramètre
+
+    Un matching total de l'input est exigé. Pour
+    controler un matching partiel, il faut utiliser
+    la méthode match
+
+    :param fnrx: FnRegex portant le test
+    :param inp: input à tester en fonction du FnRegex
+    :return: un nouveau FullMatchResult témoignant du
+            résultat final
+    """
+
     return FullMatchResult(match(fnrx, inp))
-
-
-a = Char('a')
-z = Char('z')
-A = Char('A')
-Z = Char('Z')
-_0 = Char('0')
-_9 = Char('9')
-at = Char('@')
-dot = Char('.')
-_d = _0 - _9
-_l = a - z
-_U = A - Z
-seq = a >> a
-name = (A - Z | a - z | _0 - _9 | Char('_'))[:100]
-email = name >> dot >> name >> at >> name >> dot >> name
-
-if __name__ == '__main__':
-    # import sys
-    # sys.getrecursionlimit()
-    # sys.setrecursionlimit(max)
-    print(fullmatch(email, 'padget.pro@@gmail.com').matched())
