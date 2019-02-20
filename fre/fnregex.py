@@ -279,8 +279,8 @@ class CharInterval(FnRegex):
 
     def __init__(self, first: chr, last: chr):
         super().__init__()
-        self.first = first
-        self.last = last
+        self.first: chr = first
+        self.last: chr = last
 
     def match(self, m: MatchResult) -> MatchResult:
         """Teste si le contenu de m est entre les deux
@@ -290,7 +290,7 @@ class CharInterval(FnRegex):
         :return: un nouveau MatchResult
         """
 
-        if self.first <= m.char() <= self.last:
+        if m.not_end() and self.first <= m.char() <= self.last:
             return m.ok()
         else:
             return m.bad()
