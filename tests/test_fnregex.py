@@ -11,11 +11,11 @@ class CharTest(TestCase):
 
     def test_char(self):
         char = Char('a')
-        self.assertTrue(char.match(MatchResult.input('aa')).matched(),
+        self.assertTrue(char.match(initial('aa')).matched(),
                         'on teste le cas ou est bon')
-        self.assertFalse(char.match(MatchResult.input('')).matched(),
+        self.assertFalse(char.match(initial('')).matched(),
                          'on teste le cas dune chaine vide')
-        self.assertFalse(char.match(MatchResult.input('b')).matched(),
+        self.assertFalse(char.match(initial('b')).matched(),
                          'on teste le cas dune mauvaise correspondance')
 
 
@@ -27,20 +27,20 @@ class RepeatTest(TestCase):
         """
 
         repeat = Repeat(Char('a'), 1, 4)
-        self.assertTrue(repeat.match(MatchResult.input('aaa')).matched(),
+        self.assertTrue(repeat.match(initial('aaa')).matched(),
                         'on teste le cas ou le nombre est dans l\'interval')
-        self.assertFalse(repeat.match(MatchResult.input('')).matched(),
+        self.assertFalse(repeat.match(initial('')).matched(),
                          'on teste le cas d\'une chaine vide')
-        self.assertTrue(repeat.match(MatchResult.input('abb')).matched(),
+        self.assertTrue(repeat.match(initial('abb')).matched(),
                         'on teste le cas d\'un nombre à la limite basse')
-        self.assertTrue(repeat.match(MatchResult.input('a')).matched(),
+        self.assertTrue(repeat.match(initial('a')).matched(),
                         'on teste le cas d\'un nombre à la '
                         'limite basse sans suite')
-        self.assertFalse(repeat.match(MatchResult.input('bba')).matched(),
+        self.assertFalse(repeat.match(initial('bba')).matched(),
                          'on teste le cas on l\'on n\'est pas dans l\'interval')
-        self.assertTrue(repeat.match(MatchResult.input('aaaa')).matched(),
+        self.assertTrue(repeat.match(initial('aaaa')).matched(),
                         'on teste le cas on l\'on est sur le max')
-        self.assertTrue(repeat.match(MatchResult.input('aaaaa')).matched(),
+        self.assertTrue(repeat.match(initial('aaaaa')).matched(),
                         'on teste le cas d\'un depassement d\'interval')
 
     def test_repeat_complex_case(self):
@@ -49,15 +49,15 @@ class RepeatTest(TestCase):
         """
 
         repeat = Repeat(CharInterval('a', 'z'), 1, 4)
-        self.assertTrue(repeat.match(MatchResult.input('abdj')).matched(),
+        self.assertTrue(repeat.match(initial('abdj')).matched(),
                         'on teste le cas ou le nombre est dans l\'interval')
-        self.assertFalse(repeat.match(MatchResult.input('')).matched(),
+        self.assertFalse(repeat.match(initial('')).matched(),
                          'on teste le cas d\'une chaine vide')
-        self.assertTrue(repeat.match(MatchResult.input('a46546')).matched(),
+        self.assertTrue(repeat.match(initial('a46546')).matched(),
                         'on teste le cas d\'un nombre à la limite basse')
-        self.assertFalse(repeat.match(MatchResult.input('46456a')).matched(),
+        self.assertFalse(repeat.match(initial('46456a')).matched(),
                          'on teste le cas on l\'on n\'est pas dans l\'interval')
-        self.assertTrue(repeat.match(MatchResult.input('amzkldjal')).matched(),
+        self.assertTrue(repeat.match(initial('amzkldjal')).matched(),
                         'on teste le cas d\'un depassement d\'interval')
 
 

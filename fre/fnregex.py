@@ -190,6 +190,14 @@ class Repeat(FnRegex):
         self.origin = origin
 
     def __next(self, origin: MatchResult):
+        """Avance le nombre de match de 1 et
+        renvoi un nouveau Repeat à jour.
+
+        :param origin: MatchResult d'origine pour
+                       les cas d'erreur
+        :return: un nouveau Repeat
+        """
+
         return Repeat(self.re,
                       self.start,
                       self.stop,
