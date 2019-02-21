@@ -204,17 +204,17 @@ class Repeat(FnRegex):
         :return: un nouveau MatchResult
         """
 
-        # TODO essayer de faire moins compliqué
-        reresult = self.re.match(m)
-        nb_match = self.nb_match + (1 if reresult.matched() else 0)
-        before_stop = nb_match < self.stop
-
-        if reresult.not_end() and reresult.matched() and before_stop:
-            return self.__next(m).match(reresult)
-        elif self.start <= nb_match <= self.stop:
-            return reresult.current_ok()
+        if self.nb_match == self.stop:
+            return m.current_ok()
         else:
-            return (self.origin or m).bad()
+            reresult = self.re.match(m)
+
+            if reresult.matched():
+                return self.__next(m).match(reresult)
+            elif self.start <= self.nb_match <= self.stop:
+                return reresult.current_ok()
+            else:
+                return (self.origin or m).bad()
 
 
 @dataclass(frozen=True)
@@ -402,4 +402,3 @@ def op(fnrx: FnRegex) -> OperatorFnRegex:
     """
 
     return OperatorFnRegex(fnrx)
-
