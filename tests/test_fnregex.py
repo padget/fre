@@ -1,6 +1,10 @@
 from unittest import TestCase, main
 
-from fre.fnregex import Repeat, Char, MatchResult, CharInterval
+from fre.fnregex import Repeat, Char, MatchResult, CharInterval, Sequence
+
+
+def initial(inp: str) -> MatchResult:
+    return MatchResult.input(inp)
 
 
 class CharTest(TestCase):
@@ -29,8 +33,13 @@ class RepeatTest(TestCase):
                          'on teste le cas d\'une chaine vide')
         self.assertTrue(repeat.match(MatchResult.input('abb')).matched(),
                         'on teste le cas d\'un nombre à la limite basse')
+        self.assertTrue(repeat.match(MatchResult.input('a')).matched(),
+                        'on teste le cas d\'un nombre à la '
+                        'limite basse sans suite')
         self.assertFalse(repeat.match(MatchResult.input('bba')).matched(),
                          'on teste le cas on l\'on n\'est pas dans l\'interval')
+        self.assertTrue(repeat.match(MatchResult.input('aaaa')).matched(),
+                        'on teste le cas on l\'on est sur le max')
         self.assertTrue(repeat.match(MatchResult.input('aaaaa')).matched(),
                         'on teste le cas d\'un depassement d\'interval')
 
@@ -50,6 +59,13 @@ class RepeatTest(TestCase):
                          'on teste le cas on l\'on n\'est pas dans l\'interval')
         self.assertTrue(repeat.match(MatchResult.input('amzkldjal')).matched(),
                         'on teste le cas d\'un depassement d\'interval')
+
+
+class SequenceTest(TestCase):
+    def test_sequence_test_char_case(self):
+        sequence = Sequence(Char('a'), Char('a'))
+        self.assertTrue(sequence.match(initial('aa')),
+                        'on teste le cas ou deux a se suivent bien')
 
 
 if __name__ == '__main__':

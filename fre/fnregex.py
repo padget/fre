@@ -1,3 +1,10 @@
+"""Le module fnregex permet de mettre en place
+un mécanisme d'expression regulière non pas à
+base de string comme classique, mais à base des
+opérateurs python disponibles.
+"""
+
+from __future__ import annotations
 from dataclasses import dataclass
 from sys import maxsize
 
@@ -58,7 +65,7 @@ class MatchResult:
         :return: un nouveau MatchResult
         """
 
-        return MatchResult(self.value, self.index + 1, True)
+        return MatchResult(self.value, self.index + 1)
 
     def current_ok(self):
         """Construit un MatchResult ayant un résultat
@@ -68,7 +75,7 @@ class MatchResult:
         :return: un nouveau MatchResult
         """
 
-        return MatchResult(self.value, self.index, True)
+        return MatchResult(self.value, self.index)
 
     def bad(self):
         """Construit un MatchResult ayant un résultat
@@ -134,17 +141,14 @@ class FnRegex:
         pass
 
 
+@dataclass(frozen=True)
 class Sequence(FnRegex):
     """ Un Sequence est une suite de FnRegex
     qui doivent toutes matcher pour être validé.
     """
 
-    def __init__(self,
-                 left: FnRegex,
-                 right: FnRegex):
-        super().__init__()
-        self.left = left
-        self.right = right
+    left: FnRegex
+    right: FnRegex
 
     def match(self, m: MatchResult) -> MatchResult:
         """Teste si le contenu de m match avec la sequence
@@ -161,7 +165,7 @@ class Sequence(FnRegex):
             if rresult.matched():
                 return rresult
 
-        return m
+        return m.bad()
 
 
 class Repeat(FnRegex):
@@ -176,20 +180,20 @@ class Repeat(FnRegex):
                  re: FnRegex,
                  start: int,
                  stop: int,
-                 depth: int = 0,
+                 nb_match: int = 0,
                  origin: MatchResult = None):
         super().__init__()
         self.re = re
         self.start = start or 0
         self.stop = stop or maxsize
-        self.depth = depth or 0
+        self.nb_match = nb_match
         self.origin = origin
 
     def __next(self, origin: MatchResult):
         return Repeat(self.re,
                       self.start,
                       self.stop,
-                      depth=self.depth + 1,
+                      nb_match=self.nb_match + 1,
                       origin=self.origin or origin)
 
     def match(self, m: MatchResult) -> MatchResult:
@@ -200,12 +204,14 @@ class Repeat(FnRegex):
         :return: un nouveau MatchResult
         """
 
+        # TODO essayer de faire moins compliqué
         reresult = self.re.match(m)
-        before_stop = self.depth < self.stop
+        nb_match = self.nb_match + (1 if reresult.matched() else 0)
+        before_stop = nb_match < self.stop
 
         if reresult.not_end() and reresult.matched() and before_stop:
             return self.__next(m).match(reresult)
-        elif self.start <= self.depth <= self.stop:
+        elif self.start <= nb_match <= self.stop:
             return reresult.current_ok()
         else:
             return (self.origin or m).bad()
@@ -216,6 +222,7 @@ class Choice(FnRegex):
     """Choice permet de modéliser le complémentaire
     de la Sequence à savoir un choix parmi n FnRegex
     """
+
     left: FnRegex
     right: FnRegex
 
@@ -240,6 +247,7 @@ class CharInterval(FnRegex):
     FnRegex de type Char et permet donc de tester
     si un contenu est entre ces deux Chars
     """
+
     first: chr
     last: chr
 
@@ -265,19 +273,18 @@ class Char(FnRegex):
     """
     char: chr
 
+    def match(self, m: MatchResult) -> MatchResult:
+        """Teste si le contenu de m correspond
+        strictement au caractère attendu
 
-def match(self, m: MatchResult) -> MatchResult:
-    """Teste si le contenu de m correspond
-    strictement au caractère attendu
+        :param m: contenu à tester
+        :return: un nouveau MatchResult
+        """
 
-    :param m: contenu à tester
-    :return: un nouveau MatchResult
-    """
-
-    if m.not_end() and m.char() == self.char:
-        return m.ok()
-    else:
-        return m.bad()
+        if m.not_end() and m.char() == self.char:
+            return m.ok()
+        else:
+            return m.bad()
 
 
 def match(fnrx: FnRegex, inp: str) -> MatchResult:
@@ -315,13 +322,30 @@ def fullmatch(fnrx: FnRegex, inp: str) -> FullMatchResult:
 
 
 @dataclass(frozen=True)
-class OperatorFnRegex:
+class OperatorFnRegex(FnRegex):
+    """Un OperatorFnRegex permet de wrapper un
+    FnRegex afin de lui fournir une surchage des
+    opérateur permettant de construire des FnRegex
+    non pas à partir des constructeurs (fastidieux)
+    mais plutôt à partir des opérateurs exposés
+
+    TODO mettre des exemples d'opérateurs
+
+    """
+
     fnrx: FnRegex
 
     def match(self, m: MatchResult) -> MatchResult:
+        """Execute le matching de la FnRegex wrappée
+
+        :param m: MatchResult servant de point de départ
+                  pour le matching
+        :return: le résultat de l'appel ```fnrx.match(m)```
+        """
+
         return self.fnrx.match(m)
 
-    def __sub__(self, other):
+    def __sub__(self, other: OperatorFnRegex) -> OperatorFnRegex:
         """Opérateur permettant de construire un
         CharInterval à partir de deux Char, le courant
         et l'other
@@ -330,15 +354,16 @@ class OperatorFnRegex:
         :return: un nouveau CharInterval
         """
 
-        return OperatorFnRegex(CharInterval(self.fnrx.char, other.char))
+        return OperatorFnRegex(CharInterval(self.fnrx.char, other.fnrx.char))
 
-    def __or__(self, other):
+    def __or__(self, other: OperatorFnRegex) -> OperatorFnRegex:
         """Construit un FnRegex de type Choice
+
         :param other: l'autre choix
         :return: un nouveau Choice
         """
 
-        return Choice(self, other)
+        return OperatorFnRegex(Choice(self.fnrx, other.fnrx))
 
     def __getitem__(self, sl: slice):
         """Construit un FnRegex de type Repeat
@@ -350,7 +375,7 @@ class OperatorFnRegex:
         if isinstance(sl, slice):
             start = sl.start
             stop = sl.stop
-            return Repeat(self, start, stop)
+            return OperatorFnRegex(Repeat(self.fnrx, start, stop))
         else:
             raise AttributeError('Only slice with two integers '
                                  'is implemented : \n'
@@ -358,11 +383,23 @@ class OperatorFnRegex:
                                  ' - rex[:12],\n'
                                  ' - rex[12:]')
 
-    def __rshift__(self, other):
+    def __rshift__(self, other: OperatorFnRegex) -> OperatorFnRegex:
         """Construit un FnRegex de type Sequence
 
         :param other: suite de la séquence
         :return: une nouvelle Sequence
         """
 
-        return Sequence(self, other)
+        return OperatorFnRegex(Sequence(self.fnrx, other.fnrx))
+
+
+def op(fnrx: FnRegex) -> OperatorFnRegex:
+    """Construit un OperatorFnRegex à partir
+    d'un FnRegex
+
+    :param fnrx: à wrapper dans un OperatorFnRegex
+    :return: un nouveau OperatorFnRegex
+    """
+
+    return OperatorFnRegex(fnrx)
+
