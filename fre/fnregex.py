@@ -133,41 +133,6 @@ class FnRegex:
 
         pass
 
-    def __or__(self, other):
-        """Construit un FnRegex de type Choice
-        :param other: l'autre choix
-        :return: un nouveau Choice
-        """
-
-        return Choice(self, other)
-
-    def __getitem__(self, sl: slice):
-        """Construit un FnRegex de type Repeat
-
-        :param sl: les limites min et max du Repeat
-        :return: un nouveau Repeat
-        """
-
-        if isinstance(sl, slice):
-            start = sl.start
-            stop = sl.stop
-            return Repeat(self, start, stop)
-        else:
-            raise AttributeError('Only slice with two integers '
-                                 'is implemented : \n'
-                                 ' - rex[1:5],\n'
-                                 ' - rex[:12],\n'
-                                 ' - rex[12:]')
-
-    def __rshift__(self, other):
-        """Construit un FnRegex de type Sequence
-
-        :param other: suite de la séquence
-        :return: une nouvelle Sequence
-        """
-
-        return Sequence(self, other)
-
 
 class Sequence(FnRegex):
     """ Un Sequence est une suite de FnRegex
@@ -246,15 +211,13 @@ class Repeat(FnRegex):
             return (self.origin or m).bad()
 
 
+@dataclass(frozen=True)
 class Choice(FnRegex):
     """Choice permet de modéliser le complémentaire
     de la Sequence à savoir un choix parmi n FnRegex
     """
-
-    def __init__(self, left: FnRegex, right: FnRegex):
-        super().__init__()
-        self.left = left
-        self.right = right
+    left: FnRegex
+    right: FnRegex
 
     def match(self, m: MatchResult) -> MatchResult:
         """Teste si l'un des choix disponibles est correct
@@ -271,16 +234,14 @@ class Choice(FnRegex):
             return self.right.match(m)
 
 
+@dataclass(frozen=True)
 class CharInterval(FnRegex):
     """Un CharInterval est un interval de deux
     FnRegex de type Char et permet donc de tester
     si un contenu est entre ces deux Chars
     """
-
-    def __init__(self, first: chr, last: chr):
-        super().__init__()
-        self.first: chr = first
-        self.last: chr = last
+    first: chr
+    last: chr
 
     def match(self, m: MatchResult) -> MatchResult:
         """Teste si le contenu de m est entre les deux
@@ -296,39 +257,27 @@ class CharInterval(FnRegex):
             return m.bad()
 
 
+@dataclass(frozen=True)
 class Char(FnRegex):
     """Un Char représente le FnRegex le plus simple,
     le fait de tester un contenu par rapport à un
     unique caractère
     """
+    char: chr
 
-    def __init__(self, char: chr):
-        super().__init__()
-        self.char = char
 
-    def __sub__(self, other: FnRegex) -> CharInterval:
-        """Opérateur permettant de construire un
-        CharInterval à partir de deux Char, le courant
-        et l'other
+def match(self, m: MatchResult) -> MatchResult:
+    """Teste si le contenu de m correspond
+    strictement au caractère attendu
 
-        :param other: opérande de droite de l'opérateur
-        :return: un nouveau CharInterval
-        """
+    :param m: contenu à tester
+    :return: un nouveau MatchResult
+    """
 
-        return CharInterval(self.char, other.char)
-
-    def match(self, m: MatchResult) -> MatchResult:
-        """Teste si le contenu de m correspond
-        strictement au caractère attendu
-
-        :param m: contenu à tester
-        :return: un nouveau MatchResult
-        """
-
-        if m.not_end() and m.char() == self.char:
-            return m.ok()
-        else:
-            return m.bad()
+    if m.not_end() and m.char() == self.char:
+        return m.ok()
+    else:
+        return m.bad()
 
 
 def match(fnrx: FnRegex, inp: str) -> MatchResult:
@@ -363,3 +312,57 @@ def fullmatch(fnrx: FnRegex, inp: str) -> FullMatchResult:
     """
 
     return FullMatchResult(match(fnrx, inp))
+
+
+@dataclass(frozen=True)
+class OperatorFnRegex:
+    fnrx: FnRegex
+
+    def match(self, m: MatchResult) -> MatchResult:
+        return self.fnrx.match(m)
+
+    def __sub__(self, other):
+        """Opérateur permettant de construire un
+        CharInterval à partir de deux Char, le courant
+        et l'other
+
+        :param other: opérande de droite de l'opérateur
+        :return: un nouveau CharInterval
+        """
+
+        return OperatorFnRegex(CharInterval(self.fnrx.char, other.char))
+
+    def __or__(self, other):
+        """Construit un FnRegex de type Choice
+        :param other: l'autre choix
+        :return: un nouveau Choice
+        """
+
+        return Choice(self, other)
+
+    def __getitem__(self, sl: slice):
+        """Construit un FnRegex de type Repeat
+
+        :param sl: les limites min et max du Repeat
+        :return: un nouveau Repeat
+        """
+
+        if isinstance(sl, slice):
+            start = sl.start
+            stop = sl.stop
+            return Repeat(self, start, stop)
+        else:
+            raise AttributeError('Only slice with two integers '
+                                 'is implemented : \n'
+                                 ' - rex[1:5],\n'
+                                 ' - rex[:12],\n'
+                                 ' - rex[12:]')
+
+    def __rshift__(self, other):
+        """Construit un FnRegex de type Sequence
+
+        :param other: suite de la séquence
+        :return: une nouvelle Sequence
+        """
+
+        return Sequence(self, other)
