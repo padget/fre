@@ -4,6 +4,10 @@ from fre.fnregex import Repeat, Char, MatchResult, CharInterval, Sequence
 
 
 def initial(inp: str) -> MatchResult:
+    """Initialise un MatchResult avec l'inp (str)
+    :param inp: string pour l'initialisation du MatchResult
+    :return: un nouveau MatchResult
+    """
     return MatchResult.input(inp)
 
 
@@ -62,6 +66,7 @@ class RepeatTest(TestCase):
 
 
 class SequenceTest(TestCase):
+
     def test_sequence_test_char_case(self):
         sequence = Sequence(Char('a'), Char('a'))
         self.assertTrue(sequence.match(initial('aa')),
