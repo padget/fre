@@ -67,10 +67,37 @@ class RepeatTest(TestCase):
 
 class SequenceTest(TestCase):
 
-    def test_sequence_test_char_case(self):
+    def test_sequence_char_case(self):
+        """Teste d'une sequence de deux char est suivi par
+         différents cas
+         """
+
         sequence = Sequence(Char('a'), Char('a'))
-        self.assertTrue(sequence.match(initial('aa')),
+        self.assertTrue(sequence.match(initial('aa')).matched(),
                         'on teste le cas ou deux a se suivent bien')
+        self.assertTrue(sequence.match(initial('aaa')).matched(),
+                        'on teste le cas ou lon est au dela de la sequence')
+        self.assertFalse(sequence.match(initial('a')).matched(),
+                         'on teste le cas ou il manque un element')
+        self.assertFalse(sequence.match(initial('')).matched(),
+                         'on teste le cas ou linput est vide')
+
+    def test_sequence_complex_case(self):
+        """Teste dans un cas complexe si la sequence de deux
+        elements complexe match bien avec les inputs
+        """
+
+        sequence = Sequence(Char('a'), Sequence(Char('b'), Char('c')))
+        self.assertTrue(sequence.match(initial('abc')).matched(),
+                        'on teste le cas passant nominal')
+        self.assertTrue(sequence.match(initial('abcde')).matched(),
+                        'on teste le cas passant avec du reste')
+        self.assertFalse(sequence.match(initial('')).matched(),
+                         'on teste le cas dun input vide')
+        self.assertFalse(sequence.match(initial('ab')).matched(),
+                         'on test le cas ko avec une chaine plus petite')
+        self.assertFalse(sequence.match(initial('abeccsd')).matched(),
+                         'on test le cas ko avec une chaine plus grande')
 
 
 if __name__ == '__main__':
