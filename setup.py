@@ -1,3 +1,7 @@
+"""
+Script d'installation de la librairie fre
+"""
+
 import setuptools
 
 with open('README.md') as fh:
