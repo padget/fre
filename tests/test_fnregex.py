@@ -1,6 +1,6 @@
 from unittest import TestCase, main
 
-from fre.fnregex import repeat, char, MatchResult, charinterval, seq
+from fre.fnregex import repeat, char, MatchResult, charinterval, seq, choice
 
 
 def initial(inp: str) -> MatchResult:
@@ -87,7 +87,7 @@ class SequenceTest(TestCase):
         elements complexe match bien avec les inputs
         """
 
-        sequence = seq(char('a'), seq(char('b'), char('c')))
+        sequence = seq(char('a'), char('b'), char('c'))
         self.assertTrue(sequence(initial('abc')).matched(),
                         'on teste le cas passant nominal')
         self.assertTrue(sequence(initial('abcde')).matched(),
@@ -98,6 +98,27 @@ class SequenceTest(TestCase):
                          'on test le cas ko avec une chaine plus petite')
         self.assertFalse(sequence(initial('abeccsd')).matched(),
                          'on test le cas ko avec une chaine plus grande')
+
+
+class ChoiceTest(TestCase):
+
+    def test_choice_char_case(self):
+        cho = choice(char('c'), char('a'))
+        self.assertTrue(cho(initial('a')).matched())
+        self.assertFalse(cho(initial('b')).matched())
+        self.assertFalse(cho(initial('')).matched())
+
+    def test_choice_char_interval_case(self):
+        cho = choice(charinterval('0', '8'), char('e'))
+        self.assertTrue(cho(initial('4')).matched())
+        self.assertFalse(cho(initial('b')).matched())
+        self.assertFalse(cho(initial('')).matched())
+
+    def test_choice_three_case(self):
+        cho = choice(charinterval('0', '8'), char('e'), char('c'))
+        self.assertTrue(cho(initial('c')).matched())
+        self.assertFalse(cho(initial('b')).matched())
+        self.assertFalse(cho(initial('')).matched())
 
 
 if __name__ == '__main__':

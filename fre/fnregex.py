@@ -125,32 +125,24 @@ class FullMatchResult:
 FnRegex = Callable[[MatchResult], MatchResult]
 
 
-def seq(left: FnRegex, right: FnRegex) -> FnRegex:
+def seq(*fnrexs: FnRegex) -> FnRegex:
     """ Un Sequence est une suite de FnRegex
     qui doivent toutes matcher pour être validé.
     """
 
-    def apply(m: MatchResult):
-        """Teste si le contenu de m match avec la sequence
+    def __current_or_origin(m, origin):
+        return m.current_ok() if m.matched() else origin.bad()
 
-        :param m: contenu à tester
-        :return: un nouveau MatchResult
-        """
+    def __tr_seq(m, origin, first, *nexts):
+        if not nexts:
+            return __current_or_origin(first(m), origin)
+        else:
+            return __tr_seq(first(m), origin, *nexts)
 
-        lresult = left(m)
-
-        if lresult.matched():
-            rresult = right(lresult)
-
-            if rresult.matched():
-                return rresult
-
-        return m.bad()
-
-    return apply
+    return lambda m: __tr_seq(m, m, *fnrexs)
 
 
-def repeat(re: FnRegex, start: int, stop: int, origin: MatchResult = None):
+def repeat(re: FnRegex, start: int, stop: int):
     """Un Repeat permet de mettre en place
     une répétition sur une même FnRegex. Elle
     peut être bornée par un min et un max.
@@ -158,55 +150,36 @@ def repeat(re: FnRegex, start: int, stop: int, origin: MatchResult = None):
     max stop l'inspection
     """
 
-    def __next(o: MatchResult):
-        return repeat(re, start - 1, stop - 1, origin=origin or o)
-
-    def apply(m: MatchResult) -> MatchResult:
-        """Teste si le contenu de m match entre min
-        et max fois la FnRegex répétée
-
-        :param m: contenu à tester
-        :return: un nouveau MatchResult
-        """
-
-        if stop is 0:
+    def __repeat_tr(m: MatchResult, depth: int, origin: MatchResult):
+        if m.matched():
+            if depth > stop:
+                return m.current_ok()
+            else:
+                return __repeat_tr(re(m), depth + 1, origin)
+        elif start <= depth - 1 <= stop:
             return m.current_ok()
         else:
-            reresult = re(m)
+            return origin.bad()
 
-            if reresult.matched():
-                return __next(m)(reresult)
-            elif start <= 0 <= stop:
-                return reresult.current_ok()
-            else:
-                return (origin or m).bad()
-
-    return apply
+    return lambda m: __repeat_tr(m, 0, m)
 
 
-def choice(left: FnRegex, right: FnRegex) -> FnRegex:
+def choice(*fnrxs) -> FnRegex:
     """Choice permet de modéliser le complémentaire
     de la Sequence à savoir un choix parmi n FnRegex
     """
 
-    def apply(m: MatchResult):
-        """Teste si l'un des choix disponibles est correct
+    def __tr_choice(m, first, *nexts):
+        firstm = first(m)
 
-        :param m: contenu à tester
-        :return: un nouveau MatchResult
-        """
-
-        lm = left(m)
-
-        if lm.matched():
-            return lm
+        if firstm.matched():
+            return firstm
+        elif nexts:
+            return __tr_choice(m, *nexts)
         else:
-            return right(m)
+            return m.bad()
 
-    def apply(m: MatchResult):
-        lm = left(m)
-
-    return apply
+    return lambda m: __tr_choice(m, *fnrxs)
 
 
 def charinterval(first: chr, last: chr) -> FnRegex:
@@ -215,9 +188,10 @@ def charinterval(first: chr, last: chr) -> FnRegex:
     si un contenu est entre ces deux Chars
     """
 
-    return lambda m: m.ok() \
-        if m.not_end() and first <= m.char() <= last \
-        else m.bad()
+    def __is_between_first_last(m):
+        return m.not_end() and first <= m.char() <= last
+
+    return lambda m: m.ok() if __is_between_first_last(m) else m.bad()
 
 
 def char(c: chr) -> FnRegex:
@@ -226,9 +200,10 @@ def char(c: chr) -> FnRegex:
     unique caractère
     """
 
-    return lambda m: m.ok() \
-        if m.not_end() and m.char() == c \
-        else m.bad()
+    def __is_same_c(m):
+        return m.not_end() and m.char() == c
+
+    return lambda m: m.ok() if __is_same_c(m) else m.bad()
 
 
 def match(fnrx: FnRegex, inp: str) -> MatchResult:
