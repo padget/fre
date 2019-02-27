@@ -6,7 +6,6 @@ opérateurs python disponibles.
 
 from __future__ import annotations
 from dataclasses import dataclass
-from sys import maxsize
 from typing import Callable
 
 
@@ -134,10 +133,13 @@ def seq(*fnrexs: FnRegex) -> FnRegex:
         return m.current_ok() if m.matched() else origin.bad()
 
     def __tr_seq(m, origin, first, *nexts):
-        if not nexts:
-            return __current_or_origin(first(m), origin)
+        if m.matched():
+            if not nexts:
+                return __current_or_origin(first(m), origin)
+            else:
+                return __tr_seq(first(m), origin, *nexts)
         else:
-            return __tr_seq(first(m), origin, *nexts)
+            return origin.bad()
 
     return lambda m: __tr_seq(m, m, *fnrexs)
 

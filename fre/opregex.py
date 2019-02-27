@@ -13,6 +13,7 @@ constructions plus complexes d'expressions régulières
 from __future__ import annotations
 
 from dataclasses import dataclass
+from sys import maxsize
 
 from fre.fnregex import FnRegex, repeat, choice, charinterval, MatchResult, \
     seq, char
@@ -61,8 +62,8 @@ class OperatorFnRegex(FnRegex):
         """
 
         if isinstance(sl, slice):
-            start = sl.start
-            stop = sl.stop
+            start = sl.start or 0
+            stop = sl.stop or maxsize
             return OperatorFnRegex(repeat(self.fnrx, start, stop))
         else:
             raise AttributeError('Only slice with two integers '
@@ -94,7 +95,10 @@ def op(fnrx: FnRegex) -> OperatorFnRegex:
 
 @dataclass(frozen=True)
 class CharOperatorFnRegex:
+    """Un CharOperatorFnRegex représente un simple caractère"""
+
     c: chr
+    fnrx: FnRegex
 
     def __sub__(self, other: CharOperatorFnRegex) -> OperatorFnRegex:
         """Opérateur permettant de construire un
@@ -117,6 +121,42 @@ class CharOperatorFnRegex:
 
         return char(self.c)(mt)
 
+    def __or__(self, other: OperatorFnRegex) -> OperatorFnRegex:
+        """Construit un FnRegex de type Choice
+
+        :param other: l'autre choix
+        :return: un nouveau Choice
+        """
+
+        return OperatorFnRegex(choice(self.fnrx, other.fnrx))
+
+    def __getitem__(self, sl: slice):
+        """Construit un FnRegex de type Repeat
+
+        :param sl: les limites min et max du Repeat
+        :return: un nouveau Repeat
+        """
+
+        if isinstance(sl, slice):
+            start = sl.start or 0
+            stop = sl.stop or maxsize
+            return OperatorFnRegex(repeat(self.fnrx, start, stop))
+        else:
+            raise AttributeError('Only slice with two integers '
+                                 'is implemented : \n'
+                                 ' - rex[1:5],\n'
+                                 ' - rex[:12],\n'
+                                 ' - rex[12:]')
+
+    def __rshift__(self, other: OperatorFnRegex) -> OperatorFnRegex:
+        """Construit un FnRegex de type Sequence
+
+        :param other: suite de la séquence
+        :return: une nouvelle Sequence
+        """
+
+        return OperatorFnRegex(seq(self.fnrx, other.fnrx))
+
 
 def charop(__c: chr):
     """
@@ -124,7 +164,7 @@ def charop(__c: chr):
     :param __c:
     :return:
     """
-    return CharOperatorFnRegex(__c)
+    return CharOperatorFnRegex(__c, char(__c))
 
 
 # lowers
@@ -205,3 +245,11 @@ __ = charop('_')
 dquote = charop('"')
 squote = charop('\'')
 _and = charop('&')
+_pipe = charop('|')
+eq = charop('=')
+colon = charop(':')
+scolon = charop(';')
+comma = charop(',')
+minus = charop('-')
+dot = charop('.')
+at = charop('@')
