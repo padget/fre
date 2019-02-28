@@ -9,7 +9,7 @@ with open('README.md', encoding='utf-8') as fh:
 
 setuptools.setup(
     name='fre',
-    version='0.0.2',
+    version='0.0.3',
     author='Benjamin MATHIEU',
     author_email='padget.pro@gmail.com',
     description='Function Regular Expression',
