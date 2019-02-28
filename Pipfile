@@ -1,12 +1,11 @@
 [[source]]
-name = "pypi"
-url = "https://pypi.org/simple"
+name = "fre"
+url = "https://github.com/padget/fre"
 verify_ssl = true
 
 [dev-packages]
 
 [packages]
-ply = "*"
 
 [requires]
 python_version = "3.7"
